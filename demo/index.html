@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>video-frame-at local demo</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #20302a; background: #f4f6f2; }
+    body { max-width: 760px; margin: 48px auto; padding: 0 24px; }
+    h1 { font-size: 28px; } form { display: grid; gap: 16px; margin: 28px 0; }
+    label { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    input, select, button { font: inherit; padding: 8px; }
+    button { cursor: pointer; } img { display: block; max-width: 100%; margin-top: 20px; }
+    #status { min-height: 1.5em; } a { color: #12633b; }
+  </style>
+</head>
+<body>
+  <h1>Extract a video frame locally</h1>
+  <p>Choose a video and extract a frame at a specific time, or grab the first or last frame. Files are decoded entirely in your browser.</p>
+  <form id="form">
+    <label>Video file <input id="file" type="file" accept="video/*" required></label>
+    <label>Position <select id="position"><option value="time">Time in seconds</option><option value="first">First frame</option><option value="last">Last frame</option></select>
+      <input id="seconds" type="number" value="0" step="any" aria-label="Seconds"></label>
+    <label>Format <select id="format"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></label>
+    <label><button id="extract" type="submit">Extract frame</button><button id="cancel" type="button" disabled>Cancel</button></label>
+  </form>
+  <p id="status" role="status" aria-live="polite">Choose a video to get started.</p>
+  <a id="download" hidden>Download image</a>
+  <img id="preview" alt="Extracted video frame" hidden>
+  <script type="module">
+    import { frameAt } from '../src/index.js';
+    const form = document.querySelector('#form');
+    const file = document.querySelector('#file');
+    const position = document.querySelector('#position');
+    const seconds = document.querySelector('#seconds');
+    const format = document.querySelector('#format');
+    const extract = document.querySelector('#extract');
+    const cancel = document.querySelector('#cancel');
+    const status = document.querySelector('#status');
+    const preview = document.querySelector('#preview');
+    const download = document.querySelector('#download');
+    let controller;
+    let url;
+    position.addEventListener('change', () => { seconds.disabled = position.value !== 'time'; });
+    cancel.addEventListener('click', () => controller?.abort());
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!file.files[0] || controller) return;
+      controller = new AbortController();
+      extract.disabled = true; cancel.disabled = false;
+      if (url) { URL.revokeObjectURL(url); url = undefined; }
+      preview.hidden = true; download.hidden = true;
+      status.textContent = 'Decoding and extracting…';
+      try {
+        const blob = await frameAt(file.files[0], position.value === 'time' ? Number(seconds.value) : position.value, {
+          format: format.value, signal: controller.signal,
+        });
+        url = URL.createObjectURL(blob);
+        preview.src = url; preview.hidden = false;
+        download.href = url; download.download = `frame.${blob.type.split('/')[1]}`; download.hidden = false;
+        status.textContent = `Extracted ${blob.type}, ${blob.size.toLocaleString()} bytes.`;
+      } catch (error) {
+        status.textContent = error.name === 'AbortError' ? 'Cancelled.' : `${error.code ?? error.name}: ${error.message}`;
+      } finally {
+        controller = undefined; extract.disabled = false; cancel.disabled = true;
+      }
+    });
+    window.addEventListener('pagehide', () => { controller?.abort(); if (url) URL.revokeObjectURL(url); });
+  </script>
+</body>
+</html>
