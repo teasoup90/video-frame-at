@@ -1,0 +1,20 @@
+{
+  "name": "video-frame-at",
+  "version": "0.1.0",
+  "description": "Extract a video frame in the browser without uploading the video.",
+  "author": "teasoup90",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "exports": {
+    ".": { "types": "./src/index.d.ts", "import": "./src/index.js" }
+  },
+  "types": "./src/index.d.ts",
+  "files": ["src", "README.md", "CHANGELOG.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:browser": "node tests/browser-runner.mjs",
+    "demo": "node scripts/serve.mjs"
+  },
+  "engines": { "node": ">=22" }
+}
